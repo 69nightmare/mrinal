@@ -346,9 +346,9 @@ export default function App() {
 
     const prompt =
       `You are Mrinal, writing a birthday date plan for his wife Sakshi. ` +
-      `Generate 3 date ideas in Lucknow for ${formattedDate} starting at ${formattedTime}. ` +
+      `Generate 3 date ideas in Noida or Delhi for ${formattedDate} starting at ${formattedTime}. ` +
       `Speak DIRECTLY to Sakshi in first person from Mrinal's perspective — use "I'll take you", "we'll go", "you'll love it", etc. ` +
-      `Mention SPECIFIC real places in Lucknow (e.g. Hazratganj, Tunday Kababi, Marine Drive, 1090 Chowraha, Sahara Ganj, etc.). ` +
+      `Mention SPECIFIC real places in Noida or Delhi (e.g. Cyber Hub Gurgaon, Hauz Khas Village, Connaught Place, Sector 18 Noida, Janpath, Lodhi Garden, etc.). ` +
       `Keep each idea to 3 sentences. Include timing details. Be warm, romantic, and fun. Use emojis. ` +
       `Format EXACTLY like this (keep the emoji headers):\n\n` +
       `💕 Romantic:\n[Mrinal speaking to Sakshi]\n\n` +
@@ -499,10 +499,10 @@ export default function App() {
           {/* ── Date Planner ────────────────────────────────────────────── */}
           <div className="w-full bg-white/70 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-amber-200">
             <h3 className="text-xl font-bold text-amber-600 mb-1 flex items-center justify-center gap-2">
-              <Sparkles size={20} /> Plan Our Date in Lucknow
+              <Sparkles size={20} /> Plan Our Date in Noida / Delhi
             </h3>
             <p className="text-amber-500 text-sm mb-5">
-              Pick a date &amp; time — Mrinal will plan 3 ideas: Romantic 💕, Fun 🎉, and Cozy ☕
+              Pick a date &amp; time — Mrinal will plan 3 ideas in Noida/Delhi: Romantic 💕, Fun 🎉, Cozy ☕
             </p>
 
             {/* Date + Time inputs */}
