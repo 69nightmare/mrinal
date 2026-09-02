@@ -293,8 +293,8 @@ export default function App() {
   // Day Pass wheel visibility
   const [showWheel, setShowWheel] = useState(false);
 
-  // Yes button size — starts at 20px, grows 20px per No click
-  const yesButtonSize = noCount * 20 + 20;
+  // Scale grows with each No click — transform: scale doesn't affect layout so page stays fixed
+  const yesScale = 1 + noCount * 0.28;
 
   // ── Secure API helper — calls /api/gemini serverless function ─────────────
   const callGemini = async (prompt, retryCount = 0) => {
@@ -585,8 +585,13 @@ export default function App() {
             {/* Yes — grows bigger with each No click */}
             <button
               id="yes-btn"
-              className="rounded-xl bg-rose-400 px-8 py-4 font-bold text-white shadow-lg hover:bg-rose-500 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-rose-300 active:scale-95 z-50"
-              style={{ fontSize: yesButtonSize }}
+              className="rounded-xl bg-rose-400 px-8 py-4 font-bold text-white shadow-lg hover:bg-rose-500 focus:outline-none focus:ring-4 focus:ring-rose-300 z-50 text-xl"
+              style={{
+                transform: `scale(${yesScale})`,
+                transformOrigin: "center",
+                transition: "transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                willChange: "transform",
+              }}
               onClick={() => setYesPressed(true)}
             >
               Of course! 💕
