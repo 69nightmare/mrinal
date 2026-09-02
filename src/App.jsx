@@ -306,38 +306,39 @@ export default function App() {
   const YES_W = 190, YES_H = 60;
   const NO_W  = 160, NO_H  = 56;
 
-  // Yes button: scale grows with clicks, clamped so it NEVER exceeds screen
+  // Yes button: scale grows with clicks, clamped independently so tall screens get filled
   const rawScale   = 1 + noCount * 0.32;
-  const maxScale   = Math.min(vw / YES_W, vh / YES_H) * 0.98;
-  const yesScale   = Math.min(rawScale, maxScale);
-  // "Covered" = scaled Yes button fills ≥90% of the shorter screen dimension
-  const yesCoversPct = Math.min((YES_W * yesScale) / vw, (YES_H * yesScale) / vh);
-  const yesCoversScreen = yesCoversPct >= 0.85;
+  const yesScaleX  = Math.min(rawScale, (vw / YES_W) * 0.98);
+  const yesScaleY  = Math.min(rawScale, (vh / YES_H) * 0.98);
+  // "Covered" = scaled Yes button fills ≥85% of both dimensions
+  const yesCoversX = (YES_W * yesScaleX) / vw >= 0.85;
+  const yesCoversY = (YES_H * yesScaleY) / vh >= 0.85;
+  const yesCoversScreen = yesCoversX && yesCoversY;
 
   // No button: fixed pixel position, null = no space left (hide it)
   const [noPos, setNoPos] = useState(null); // { x, y } in px
 
   // Find a random fixed position for No that doesn't overlap current Yes footprint
   const yesBtnRef = useRef(null);
-  const findNoPos = useCallback((scale) => {
+  const findNoPos = useCallback((scaleX, scaleY) => {
     let exL, exR, exT, exB;
     if (yesBtnRef.current) {
       const rect = yesBtnRef.current.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
       // Calculate new scaled width/height using the base width (without current scale)
-      const baseW = rect.width / yesScale;
-      const baseH = rect.height / yesScale;
-      const scaledW = baseW * scale;
-      const scaledH = baseH * scale;
+      const baseW = rect.width / yesScaleX;
+      const baseH = rect.height / yesScaleY;
+      const scaledW = baseW * scaleX;
+      const scaledH = baseH * scaleY;
       exL = cx - scaledW / 2;
       exR = cx + scaledW / 2;
       exT = cy - scaledH / 2;
       exB = cy + scaledH / 2;
     } else {
       // fallback
-      const scaledW = YES_W * scale;
-      const scaledH = YES_H * scale;
+      const scaledW = YES_W * scaleX;
+      const scaledH = YES_H * scaleY;
       exL = (vw - scaledW) / 2; exR = (vw + scaledW) / 2;
       const exY = vh * 0.5;
       exT = exY - (scaledH / 2); exB = exY + (scaledH / 2);
@@ -354,7 +355,7 @@ export default function App() {
       if (!overlaps) return { x, y };
     }
     return null; // screen is covered — No has nowhere to go
-  }, [vw, vh, yesScale]);
+  }, [vw, vh, yesScaleX, yesScaleY]);
 
   // ── Secure API helper — calls /api/gemini serverless function ─────────────
   const callGemini = async (prompt, retryCount = 0) => {
@@ -439,8 +440,10 @@ export default function App() {
     const newCount = noCount + 1;
     setNoCount(newCount);
     // Compute the scale AFTER this click so we avoid the NEW yes-button footprint
-    const newScale = Math.min(1 + newCount * 0.32, maxScale);
-    const pos = findNoPos(newScale);
+    const newRawScale = 1 + newCount * 0.32;
+    const newScaleX = Math.min(newRawScale, (vw / YES_W) * 0.98);
+    const newScaleY = Math.min(newRawScale, (vh / YES_H) * 0.98);
+    const pos = findNoPos(newScaleX, newScaleY);
     setNoPos(pos); // null = no valid position → hide No button
   };
 
@@ -657,7 +660,7 @@ export default function App() {
               onClick={() => setYesPressed(true)}
               className="rounded-xl bg-rose-400 px-8 py-4 font-black text-white shadow-2xl hover:bg-rose-500 focus:outline-none text-xl whitespace-nowrap z-50 relative"
               style={{
-                transform: `scale(${yesScale})`,
+                transform: `scale(${yesScaleX}, ${yesScaleY})`,
                 transformOrigin: "center",
                 transition: "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
                 willChange: "transform",
