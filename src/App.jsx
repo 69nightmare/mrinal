@@ -307,7 +307,8 @@ export default function App() {
   const NO_W  = 160, NO_H  = 56;
 
   // Yes button: scale grows with clicks, clamped independently so tall screens get filled
-  const rawScale   = 1 + noCount * 0.32;
+  // Multiplier is 1.0 so by 16 clicks it reaches scale ~17 (1020px height), completely filling any mobile screen
+  const rawScale   = 1 + noCount * 1.0;
   const yesScaleX  = Math.min(rawScale, (vw / YES_W) * 0.98);
   const yesScaleY  = Math.min(rawScale, (vh / YES_H) * 0.98);
   // "Covered" = scaled Yes button fills ≥85% of both dimensions
@@ -440,7 +441,7 @@ export default function App() {
     const newCount = noCount + 1;
     setNoCount(newCount);
     // Compute the scale AFTER this click so we avoid the NEW yes-button footprint
-    const newRawScale = 1 + newCount * 0.32;
+    const newRawScale = 1 + newCount * 1.0;
     const newScaleX = Math.min(newRawScale, (vw / YES_W) * 0.98);
     const newScaleY = Math.min(newRawScale, (vh / YES_H) * 0.98);
     const pos = findNoPos(newScaleX, newScaleY);
