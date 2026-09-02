@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { Heart, Stars, Sparkles, Send, Loader2, PartyPopper, Calendar, Clock } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -318,13 +318,31 @@ export default function App() {
   const [noPos, setNoPos] = useState(null); // { x, y } in px
 
   // Find a random fixed position for No that doesn't overlap current Yes footprint
+  const yesBtnRef = useRef(null);
   const findNoPos = useCallback((scale) => {
-    const scaledW = YES_W * scale;
-    const scaledH = YES_H * scale;
-    // Yes button is centered horizontally, but vertically at 62%
-    const exL = (vw - scaledW) / 2, exR = (vw + scaledW) / 2;
-    const exY = vh * 0.62;
-    const exT = exY - (scaledH / 2), exB = exY + (scaledH / 2);
+    let exL, exR, exT, exB;
+    if (yesBtnRef.current) {
+      const rect = yesBtnRef.current.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      // Calculate new scaled width/height using the base width (without current scale)
+      const baseW = rect.width / yesScale;
+      const baseH = rect.height / yesScale;
+      const scaledW = baseW * scale;
+      const scaledH = baseH * scale;
+      exL = cx - scaledW / 2;
+      exR = cx + scaledW / 2;
+      exT = cy - scaledH / 2;
+      exB = cy + scaledH / 2;
+    } else {
+      // fallback
+      const scaledW = YES_W * scale;
+      const scaledH = YES_H * scale;
+      exL = (vw - scaledW) / 2; exR = (vw + scaledW) / 2;
+      const exY = vh * 0.5;
+      exT = exY - (scaledH / 2); exB = exY + (scaledH / 2);
+    }
+    
     // Add padding so No never grazes the edge of Yes
     const pad = 16;
     for (let i = 0; i < 200; i++) {
@@ -336,7 +354,7 @@ export default function App() {
       if (!overlaps) return { x, y };
     }
     return null; // screen is covered — No has nowhere to go
-  }, [vw, vh]);
+  }, [vw, vh, yesScale]);
 
   // ── Secure API helper — calls /api/gemini serverless function ─────────────
   const callGemini = async (prompt, retryCount = 0) => {
@@ -607,7 +625,12 @@ export default function App() {
 
       ) : (
         // ── Question View ──────────────────────────────────────────────────
-        <div className="flex flex-col items-center gap-6 w-full max-w-2xl text-center relative z-10">
+        <div className="flex flex-col items-center gap-6 w-full max-w-2xl text-center relative z-10 mt-8">
+          
+          <h1 className="text-4xl md:text-5xl font-extrabold text-rose-500 drop-shadow-sm leading-tight px-4">
+            Sakshi… do you love me? 🥺
+          </h1>
+
           <div className="relative">
             <img
               src="https://media.tenor.com/h5jR0eK8pjoAAAAi/cute-bear.gif"
@@ -626,74 +649,59 @@ export default function App() {
             )}
           </div>
 
-          <h1 className="text-4xl md:text-5xl font-extrabold text-rose-500 drop-shadow-sm leading-tight px-4">
-            Sakshi… do you love me? 🥺
-          </h1>
+          <div className="flex flex-col items-center justify-center gap-4 relative w-full mt-2">
+            {/* YES — normal document flow, grows via scale */}
+            <button
+              id="yes-btn"
+              ref={yesBtnRef}
+              onClick={() => setYesPressed(true)}
+              className="rounded-xl bg-rose-400 px-8 py-4 font-black text-white shadow-2xl hover:bg-rose-500 focus:outline-none text-xl whitespace-nowrap z-50 relative"
+              style={{
+                transform: `scale(${yesScale})`,
+                transformOrigin: "center",
+                transition: "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                willChange: "transform",
+              }}
+            >
+              Of course! 💕
+            </button>
 
-          {/* ── Buttons — both position:fixed so page never reflows ── */}
-
-          {/* YES — fixed position, grows via scale, capped to screen */}
-          <button
-            id="yes-btn"
-            onClick={() => setYesPressed(true)}
-            className="rounded-xl bg-rose-400 px-8 py-4 font-black text-white shadow-2xl hover:bg-rose-500 focus:outline-none text-xl whitespace-nowrap"
-            style={{
-              position: "fixed",
-              top: "62%",
-              left: "50%",
-              transform: `translate(-50%, -50%) scale(${yesScale})`,
-              transformOrigin: "center",
-              transition: "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
-              willChange: "transform",
-              zIndex: 50,
-            }}
-          >
-            Of course! 💕
-          </button>
-
-          {/* NO — before first click: static near bottom; after: jumps to random fixed position */}
-          {(!yesCoversScreen && noCount < 15) && (
-            noCount === 0 ? (
-              // Initial position — centered below the Yes button
-              <button
-                id="no-btn"
-                onClick={handleNoClick}
-                className="rounded-xl bg-amber-400 px-8 py-4 font-bold text-white shadow-lg hover:bg-amber-500 focus:outline-none text-xl"
-                style={{
-                  position: "fixed",
-                  top: "76%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  zIndex: 40,
-                }}
-              >
-                No
-              </button>
-            ) : noPos ? (
-              // After clicks: random position, never under Yes
-              <button
-                id="no-btn"
-                onClick={handleNoClick}
-                className="rounded-xl bg-amber-400 px-6 py-3 font-bold text-white shadow-lg hover:bg-amber-500 focus:outline-none text-base whitespace-nowrap"
-                style={{
-                  position: "fixed",
-                  left: noPos.x,
-                  top: noPos.y,
-                  zIndex: 40,
-                  // No transition — it teleports away so it can't be caught
-                }}
-              >
-                {getNoButtonText()}
-              </button>
-            ) : null // Yes is so big there's nowhere to put No — only Yes remains
-          )}
+            {/* NO — before first click: normal flow; after: jumps to fixed pos */}
+            {(!yesCoversScreen && noCount < 20) && (
+              noCount === 0 ? (
+                // Initial position — just naturally sitting below Yes
+                <button
+                  id="no-btn"
+                  onClick={handleNoClick}
+                  className="rounded-xl bg-amber-400 px-8 py-4 font-bold text-white shadow-lg hover:bg-amber-500 focus:outline-none text-xl relative z-40"
+                >
+                  No
+                </button>
+              ) : noPos ? (
+                // After clicks: random fixed position dodging Yes
+                <button
+                  id="no-btn"
+                  onClick={handleNoClick}
+                  className="rounded-xl bg-amber-400 px-6 py-3 font-bold text-white shadow-lg hover:bg-amber-500 focus:outline-none text-base whitespace-nowrap"
+                  style={{
+                    position: "fixed",
+                    left: noPos.x,
+                    top: noPos.y,
+                    zIndex: 40,
+                  }}
+                >
+                  {getNoButtonText()}
+                </button>
+              ) : null
+            )}
+          </div>
 
           {/* AI convince button */}
           <button
             id="convince-btn"
             onClick={handleConvinceMe}
             disabled={loadingReason}
-            className="mt-6 text-rose-400 hover:text-rose-600 underline decoration-rose-200 underline-offset-4 text-sm font-medium flex items-center gap-1 transition-colors hover:scale-105 transform duration-200"
+            className="mt-2 text-rose-400 hover:text-rose-600 underline decoration-rose-200 underline-offset-4 text-sm font-medium flex items-center gap-1 transition-colors hover:scale-105 transform duration-200"
           >
             {loadingReason
               ? <Loader2 className="animate-spin" size={16} />
