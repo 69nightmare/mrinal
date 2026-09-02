@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Heart, Stars, Sparkles, Send, Loader2, PartyPopper, Calendar, Clock } from "lucide-react";
 
 // ─── Palette A: Warm Gold + Blush ───────────────────────────────────────────
@@ -44,15 +44,108 @@ export default function App() {
     }
   };
 
-  // ── "Need convincing?" button ──
+  // ── "Need convincing?" button — Mrinal convinces Sakshi, romantic & cheesy ──
   const handleConvinceMe = async () => {
     setLoadingReason(true);
     const prompt =
-      "Give me one very short, witty, sweet reason why Sakshi loves Mrinal. Max 15 words. Use one emoji. Keep it playful and warm.";
+      "You are Mrinal, deeply in love with his wife Sakshi. Write ONE line that Mrinal says directly to Sakshi to convince her she loves him back. " +
+      "Be romantic, corny, over-the-top cheesy, and personal — like a Bollywood hero. " +
+      "Address her directly as 'Sakshi'. Max 20 words. End with exactly one emoji. " +
+      "Examples of the tone: 'Sakshi, you are the reason my heart has Wi-Fi 💕', 'Sakshi, even my heartbeat spells your name 🥺'. " +
+      "Now write a DIFFERENT, fresh, equally cheesy line.";
     const text = await callGemini(prompt);
     setAiReason(text);
     setLoadingReason(false);
   };
+
+  // ── 75 "No" button phrases — shuffled randomly on every page load ──
+  const shuffledNoPhrases = useMemo(() => {
+    const pool = [
+      "Are you sure? 🥺",
+      "Really sure?",
+      "Think again!",
+      "But… I love you! 💕",
+      "Please? 🙏",
+      "That can't be right!",
+      "Give it another thought!",
+      "Are you absolutely certain?",
+      "You'll hurt my feelings 😢",
+      "Have a heart!",
+      "Don't be so cold!",
+      "Change of heart? 💛",
+      "Wouldn't you reconsider?",
+      "Is that your final answer?",
+      "You're breaking my heart ;(",
+      "Plsss? :(",
+      "But I made chai for you! ☕",
+      "Okay but… what if yes? 🤔",
+      "My heart says otherwise 💔",
+      "Even the stars say yes ✨",
+      "Try the other button 😅",
+      "Wrong button, surely?",
+      "The WiFi says yes 📶",
+      "Ek baar aur soch lo",
+      "Arey yaar! 😩",
+      "Main ro dunga 😭",
+      "You're my favourite person!",
+      "Google Maps says go together 🗺️",
+      "My mom likes you 😅",
+      "But I remembered your birthday! 🎂",
+      "I'll make Maggi for you 🍜",
+      "Last chance, I promise!",
+      "Even the moon is judging you 🌙",
+      "Plot twist: click Yes",
+      "Error 404: No not found 🤖",
+      "Are you pranking me? 😏",
+      "My heart just skipped 💓",
+      "Ek chance toh do yaar",
+      "Even Alexa agrees with me 😂",
+      "Retry? 🔄",
+      "Nahi toh nahi… but please?",
+      "I googled it: Yes is better",
+      "Press Yes for good luck 🍀",
+      "What if I said please nicely? 🥹",
+      "This button is broken, try Yes",
+      "But I'm really cute tho 🐻",
+      "Even Siri agrees with me 📱",
+      "You're making the bear cry 🐻",
+      "The stars aligned for Yes ⭐",
+      "Main wait karoonga… forever",
+      "Still here. Still hoping. 💕",
+      "Your heart knows the answer",
+      "Dil toh pagal hai 🎵",
+      "Ab toh haan bol do!",
+      "I'll never stop asking 😄",
+      "You're legally obligated to say Yes",
+      "Science says love > No 🔬",
+      "My plants believe in us 🌿",
+      "Destiny called. It wants Yes.",
+      "Tum hi ho 🎵",
+      "The universe is watching 👀",
+      "Say yes and I'll do dishes 🍽️",
+      "Yes = unlimited hugs 🤗",
+      "You're my person, you know that?",
+      "Meri jaan, please? 🥹",
+      "Fine. But I'll be sad. 😔",
+      "Plot twist: you always meant Yes",
+      "I'll write a poem if you say Yes",
+      "Okay last time. Promise. Maybe. 😅",
+      "You're literally my sunshine ☀️",
+      "Even traffic agrees with me 🚗",
+      "Zindagi na milegi dobara 🎬",
+      "I saved your favourite snack for this",
+      "This button is working against us 😤",
+      "Pehli fursat mein haan bol do",
+      "Okay but consider: Yes 🌸"
+    ];
+    // Fisher-Yates shuffle
+    const arr = [...pool];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }, []); // shuffled once on mount, stable for the session
 
   // ── Parse AI response into 3 date idea cards ──
   const parseThreePlans = (raw) => {
@@ -108,26 +201,9 @@ Format your reply EXACTLY like this (keep the emoji headers):
   const handleNoClick = () => setNoCount(noCount + 1);
 
   const getNoButtonText = () => {
-    const phrases = [
-      "No",
-      "Are you sure? 🥺",
-      "Really sure?",
-      "Think again!",
-      "But… I love you! 💕",
-      "Please? 🙏",
-      "That can't be right!",
-      "Give it another thought!",
-      "Are you absolutely certain?",
-      "You'll hurt my feelings 😢",
-      "Have a heart!",
-      "Don't be so cold!",
-      "Change of heart? 💛",
-      "Wouldn't you reconsider?",
-      "Is that your final answer?",
-      "You're breaking my heart ;(",
-      "Plsss? :(",
-    ];
-    return phrases[Math.min(noCount, phrases.length - 1)];
+    if (noCount === 0) return "No";
+    // After first click cycle through the shuffled pool; clamp at last item
+    return shuffledNoPhrases[Math.min(noCount - 1, shuffledNoPhrases.length - 1)];
   };
 
   // ── Date card config ──
