@@ -321,9 +321,10 @@ export default function App() {
   const findNoPos = useCallback((scale) => {
     const scaledW = YES_W * scale;
     const scaledH = YES_H * scale;
-    // Yes button is centered on screen
+    // Yes button is centered horizontally, but vertically at 62%
     const exL = (vw - scaledW) / 2, exR = (vw + scaledW) / 2;
-    const exT = (vh - scaledH) / 2, exB = (vh + scaledH) / 2;
+    const exY = vh * 0.62;
+    const exT = exY - (scaledH / 2), exB = exY + (scaledH / 2);
     // Add padding so No never grazes the edge of Yes
     const pad = 16;
     for (let i = 0; i < 200; i++) {
@@ -631,14 +632,14 @@ export default function App() {
 
           {/* ── Buttons — both position:fixed so page never reflows ── */}
 
-          {/* YES — fixed center, grows via scale, capped to screen */}
+          {/* YES — fixed position, grows via scale, capped to screen */}
           <button
             id="yes-btn"
             onClick={() => setYesPressed(true)}
             className="rounded-xl bg-rose-400 px-8 py-4 font-black text-white shadow-2xl hover:bg-rose-500 focus:outline-none text-xl whitespace-nowrap"
             style={{
               position: "fixed",
-              top: "50%",
+              top: "62%",
               left: "50%",
               transform: `translate(-50%, -50%) scale(${yesScale})`,
               transformOrigin: "center",
@@ -651,7 +652,7 @@ export default function App() {
           </button>
 
           {/* NO — before first click: static near bottom; after: jumps to random fixed position */}
-          {!yesCoversScreen && (
+          {(!yesCoversScreen && noCount < 15) && (
             noCount === 0 ? (
               // Initial position — centered below the Yes button
               <button
@@ -660,9 +661,9 @@ export default function App() {
                 className="rounded-xl bg-amber-400 px-8 py-4 font-bold text-white shadow-lg hover:bg-amber-500 focus:outline-none text-xl"
                 style={{
                   position: "fixed",
-                  bottom: "22%",
+                  top: "76%",
                   left: "50%",
-                  transform: "translateX(-50%)",
+                  transform: "translate(-50%, -50%)",
                   zIndex: 40,
                 }}
               >
