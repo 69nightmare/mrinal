@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { Heart, Stars, Sparkles, Send, Loader2, PartyPopper, Calendar, Clock } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ const PASSES = [
   },
 ];
 
-const N   = PASSES.length; // 10
+const N = PASSES.length; // 10
 const SEG = 360 / N;       // 36° per segment
 
 // ── SVG helpers — angles measured clockwise from 12 o'clock ──────────────────
@@ -77,7 +77,7 @@ const arc = (r, s, e) => {
 function SpinWheel({ onResult }) {
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
-  const [winner,   setWinner]   = useState(null);
+  const [winner, setWinner] = useState(null);
   const [spunOnce, setSpunOnce] = useState(false);
 
   const SPIN_DURATION = 5000; // ms — must match CSS transition duration
@@ -97,8 +97,8 @@ function SpinWheel({ onResult }) {
     //   R = (360 − (i*SEG + SEG/2)) % 360
     const segCenter = winIdx * SEG + SEG / 2;
     const targetMod = (360 - segCenter + 360) % 360;
-    const curMod    = rotation % 360;
-    const delta     = ((targetMod - curMod) + 360) % 360 || 360;
+    const curMod = rotation % 360;
+    const delta = ((targetMod - curMod) + 360) % 360 || 360;
     const extraSpins = 7 + Math.floor(Math.random() * 5); // 7–11 full rotations
     const newRotation = rotation + extraSpins * 360 + delta;
 
@@ -148,7 +148,7 @@ function SpinWheel({ onResult }) {
             <defs>
               {PASSES.map((p, i) => (
                 <radialGradient key={i} id={`rg${i}`} cx="35%" cy="35%">
-                  <stop offset="0%"   stopColor={p.light} />
+                  <stop offset="0%" stopColor={p.light} />
                   <stop offset="100%" stopColor={p.color} />
                 </radialGradient>
               ))}
@@ -160,8 +160,8 @@ function SpinWheel({ onResult }) {
             {/* Segments */}
             {PASSES.map((pass, i) => {
               const start = i * SEG;
-              const end   = (i + 1) * SEG;
-              const mid   = i * SEG + SEG / 2;
+              const end = (i + 1) * SEG;
+              const mid = i * SEG + SEG / 2;
               const [ex, ey] = pt(155 * 0.67, mid); // emoji position (67% of radius)
               return (
                 <g key={i}>
@@ -210,10 +210,10 @@ function SpinWheel({ onResult }) {
             {/* Main pointer */}
             <polygon points="11,30 0,5 22,5" fill="#DC2626" />
             {/* Highlight */}
-            <polygon points="11,26 4,9 18,9"  fill="#EF4444" />
+            <polygon points="11,26 4,9 18,9" fill="#EF4444" />
             {/* Pin head */}
             <circle cx="11" cy="5" r="5" fill="#DC2626" />
-            <circle cx="9"  cy="3.5" r="2" fill="#FCA5A5" opacity="0.6" />
+            <circle cx="9" cy="3.5" r="2" fill="#FCA5A5" opacity="0.6" />
           </svg>
         </div>
       </div>
@@ -277,24 +277,65 @@ function SpinWheel({ onResult }) {
 // Main App
 // ─────────────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [noCount,    setNoCount]    = useState(0);
+  const [noCount, setNoCount] = useState(0);
   const [yesPressed, setYesPressed] = useState(false);
 
   // AI State
-  const [aiReason,      setAiReason]      = useState("");
+  const [aiReason, setAiReason] = useState("");
   const [loadingReason, setLoadingReason] = useState(false);
 
   // Date planner
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
-  const [datePlan,     setDatePlan]     = useState(null);
-  const [loadingPlan,  setLoadingPlan]  = useState(false);
+  const [datePlan, setDatePlan] = useState(null);
+  const [loadingPlan, setLoadingPlan] = useState(false);
 
   // Day Pass wheel visibility
   const [showWheel, setShowWheel] = useState(false);
 
-  // Scale grows with each No click — transform: scale doesn't affect layout so page stays fixed
-  const yesScale = 1 + noCount * 0.28;
+  // ── Viewport tracking (for button clamping + No button placement) ──────────
+  const [vw, setVw] = useState(() => window.innerWidth);
+  const [vh, setVh] = useState(() => window.innerHeight);
+  useEffect(() => {
+    const onResize = () => { setVw(window.innerWidth); setVh(window.innerHeight); };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Approximate natural button sizes (px)
+  const YES_W = 190, YES_H = 60;
+  const NO_W  = 160, NO_H  = 56;
+
+  // Yes button: scale grows with clicks, clamped so it NEVER exceeds screen
+  const rawScale   = 1 + noCount * 0.32;
+  const maxScale   = Math.min(vw / YES_W, vh / YES_H) * 0.98;
+  const yesScale   = Math.min(rawScale, maxScale);
+  // "Covered" = scaled Yes button fills ≥90% of the shorter screen dimension
+  const yesCoversPct = Math.min((YES_W * yesScale) / vw, (YES_H * yesScale) / vh);
+  const yesCoversScreen = yesCoversPct >= 0.85;
+
+  // No button: fixed pixel position, null = no space left (hide it)
+  const [noPos, setNoPos] = useState(null); // { x, y } in px
+
+  // Find a random fixed position for No that doesn't overlap current Yes footprint
+  const findNoPos = useCallback((scale) => {
+    const scaledW = YES_W * scale;
+    const scaledH = YES_H * scale;
+    // Yes button is centered on screen
+    const exL = (vw - scaledW) / 2, exR = (vw + scaledW) / 2;
+    const exT = (vh - scaledH) / 2, exB = (vh + scaledH) / 2;
+    // Add padding so No never grazes the edge of Yes
+    const pad = 16;
+    for (let i = 0; i < 200; i++) {
+      const x = Math.random() * Math.max(1, vw - NO_W);
+      const y = Math.random() * Math.max(1, vh - NO_H);
+      const overlaps =
+        x < exR + pad && x + NO_W > exL - pad &&
+        y < exB + pad && y + NO_H > exT - pad;
+      if (!overlaps) return { x, y };
+    }
+    return null; // screen is covered — No has nowhere to go
+  }, [vw, vh]);
 
   // ── Secure API helper — calls /api/gemini serverless function ─────────────
   const callGemini = async (prompt, retryCount = 0) => {
@@ -366,16 +407,23 @@ export default function App() {
     const blocks = raw.split(/\n(?=💕|🎉|☕)/);
     blocks.forEach((block) => {
       const b = block.trim();
-      if      (b.startsWith("💕")) out.romantic = b.replace(/^💕[^\n]*\n?/i, "").trim();
-      else if (b.startsWith("🎉")) out.fun      = b.replace(/^🎉[^\n]*\n?/i, "").trim();
-      else if (b.startsWith("☕")) out.cozy     = b.replace(/^☕[^\n]*\n?/i, "").trim();
+      if (b.startsWith("💕")) out.romantic = b.replace(/^💕[^\n]*\n?/i, "").trim();
+      else if (b.startsWith("🎉")) out.fun = b.replace(/^🎉[^\n]*\n?/i, "").trim();
+      else if (b.startsWith("☕")) out.cozy = b.replace(/^☕[^\n]*\n?/i, "").trim();
     });
     if (!out.romantic && !out.fun && !out.cozy) out.romantic = raw;
     return out;
   };
 
   // ── No button ─────────────────────────────────────────────────────────────
-  const handleNoClick = () => setNoCount(c => c + 1);
+  const handleNoClick = () => {
+    const newCount = noCount + 1;
+    setNoCount(newCount);
+    // Compute the scale AFTER this click so we avoid the NEW yes-button footprint
+    const newScale = Math.min(1 + newCount * 0.32, maxScale);
+    const pos = findNoPos(newScale);
+    setNoPos(pos); // null = no valid position → hide No button
+  };
 
   // 75 phrases, shuffled once on mount
   const shuffledNoPhrases = useMemo(() => {
@@ -431,9 +479,9 @@ export default function App() {
 
   // ── Date card config ───────────────────────────────────────────────────────
   const cardConfig = {
-    romantic: { label: "💕 Romantic", border: "border-rose-200",  bg: "bg-rose-50",  head: "text-rose-600"  },
-    fun:      { label: "🎉 Fun",      border: "border-amber-200", bg: "bg-amber-50", head: "text-amber-600" },
-    cozy:     { label: "☕ Cozy",     border: "border-green-200", bg: "bg-green-50", head: "text-green-700" },
+    romantic: { label: "💕 Romantic", border: "border-rose-200", bg: "bg-rose-50", head: "text-rose-600" },
+    fun: { label: "🎉 Fun", border: "border-amber-200", bg: "bg-amber-50", head: "text-amber-600" },
+    cozy: { label: "☕ Cozy", border: "border-green-200", bg: "bg-green-50", head: "text-green-700" },
   };
 
   return (
@@ -581,30 +629,63 @@ export default function App() {
             Sakshi… do you love me? 🥺
           </h1>
 
-          <div className="flex flex-wrap justify-center items-center gap-4 w-full px-4">
-            {/* Yes — grows bigger with each No click */}
-            <button
-              id="yes-btn"
-              className="rounded-xl bg-rose-400 px-8 py-4 font-bold text-white shadow-lg hover:bg-rose-500 focus:outline-none focus:ring-4 focus:ring-rose-300 z-50 text-xl"
-              style={{
-                transform: `scale(${yesScale})`,
-                transformOrigin: "center",
-                transition: "transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                willChange: "transform",
-              }}
-              onClick={() => setYesPressed(true)}
-            >
-              Of course! 💕
-            </button>
+          {/* ── Buttons — both position:fixed so page never reflows ── */}
 
-            <button
-              id="no-btn"
-              onClick={handleNoClick}
-              className="rounded-xl bg-amber-400 px-8 py-4 font-bold text-white shadow-lg hover:bg-amber-500 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-amber-300 active:scale-95 text-xl"
-            >
-              {getNoButtonText()}
-            </button>
-          </div>
+          {/* YES — fixed center, grows via scale, capped to screen */}
+          <button
+            id="yes-btn"
+            onClick={() => setYesPressed(true)}
+            className="rounded-xl bg-rose-400 px-8 py-4 font-black text-white shadow-2xl hover:bg-rose-500 focus:outline-none text-xl whitespace-nowrap"
+            style={{
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: `translate(-50%, -50%) scale(${yesScale})`,
+              transformOrigin: "center",
+              transition: "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+              willChange: "transform",
+              zIndex: 50,
+            }}
+          >
+            Of course! 💕
+          </button>
+
+          {/* NO — before first click: static near bottom; after: jumps to random fixed position */}
+          {!yesCoversScreen && (
+            noCount === 0 ? (
+              // Initial position — centered below the Yes button
+              <button
+                id="no-btn"
+                onClick={handleNoClick}
+                className="rounded-xl bg-amber-400 px-8 py-4 font-bold text-white shadow-lg hover:bg-amber-500 focus:outline-none text-xl"
+                style={{
+                  position: "fixed",
+                  bottom: "22%",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  zIndex: 40,
+                }}
+              >
+                No
+              </button>
+            ) : noPos ? (
+              // After clicks: random position, never under Yes
+              <button
+                id="no-btn"
+                onClick={handleNoClick}
+                className="rounded-xl bg-amber-400 px-6 py-3 font-bold text-white shadow-lg hover:bg-amber-500 focus:outline-none text-base whitespace-nowrap"
+                style={{
+                  position: "fixed",
+                  left: noPos.x,
+                  top: noPos.y,
+                  zIndex: 40,
+                  // No transition — it teleports away so it can't be caught
+                }}
+              >
+                {getNoButtonText()}
+              </button>
+            ) : null // Yes is so big there's nowhere to put No — only Yes remains
+          )}
 
           {/* AI convince button */}
           <button
